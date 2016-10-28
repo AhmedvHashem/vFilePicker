@@ -14,9 +14,14 @@ android:
     - build-tools-23.0.3
     # The SDK version used to compile your project
     - android-23
+    - extra-android-m2repository
+    - extra-google-m2repository
+    - extra-android-support
 
 licenses:
     - 'android-sdk-license-.+'
+    - 'android-sdk-preview-license-.+'
+    - 'intel-android-extra-license.+'
     
 script:
    - ./gradlew build connectedCheck
