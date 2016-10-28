@@ -1,0 +1,7 @@
+branches:
+  only:
+    - master
+    - release
+    - fast-test
+
+language: android
