@@ -23,7 +23,7 @@ licenses:
 
     
 script:
-   - ./gradlew build connectedCheck
+   - ./gradlew build connectedCheck --stacktrace
    
 before_install:
     - chmod +x gradlew
