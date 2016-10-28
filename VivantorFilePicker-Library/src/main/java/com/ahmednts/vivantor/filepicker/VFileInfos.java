@@ -94,7 +94,7 @@ public class VFileInfos
 			{
 //			    return VFilePickerUtilities.getBitmapBase64String(VFilePickerUtilities.getBitmap(filePath, 512));
 
-				return VFilePickerUtilities.getBitmapBase64String(VFilePickerUtilities.rotateImageIfRequired(VFilePickerUtilities.getBitmap(filePath, 1024), Uri.parse(filePath)));
+				return VFilePickerUtilities.getBitmapBase64String(VFilePickerUtilities.rotateImageIfRequired(VFilePickerUtilities.getBitmap(filePath, 1024), filePath));
 			}
 			else
 			{
@@ -120,7 +120,7 @@ public class VFileInfos
 			{
 //			    return VFilePickerUtilities.getBitmapByteArray(VFilePickerUtilities.getBitmap(filePath, 512));
 
-				return VFilePickerUtilities.getBitmapByteArray(VFilePickerUtilities.rotateImageIfRequired(VFilePickerUtilities.getBitmap(filePath, 1024), Uri.parse(filePath)));
+				return VFilePickerUtilities.getBitmapByteArray(VFilePickerUtilities.rotateImageIfRequired(VFilePickerUtilities.getBitmap(filePath, 1024), filePath));
 			}
 			else
 			{
