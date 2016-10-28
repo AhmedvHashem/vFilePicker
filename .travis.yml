@@ -1,6 +1,6 @@
 language: android
 jdk: oraclejdk8
-sudo: false
+sudo: required
 
 android:
   components:
@@ -18,12 +18,11 @@ android:
     - extra-android-support
 
 licenses:
-    - 'android-sdk-preview-license-.+'
-    - 'android-sdk-license-.+'
+    - '.+'
 
     
 script:
-   - ./gradlew build connectedCheck --stacktrace
+   - ./gradlew build connectedCheck
    
 before_install:
     - chmod +x gradlew
