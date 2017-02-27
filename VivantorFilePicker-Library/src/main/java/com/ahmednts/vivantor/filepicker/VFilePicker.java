@@ -1,103 +1,135 @@
 package com.ahmednts.vivantor.filepicker;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.content.ContentUris;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Environment;
-import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 
+import java.io.File;
+
 /**
  * Created by AhmedNTS on 2015-09-07.
  */
+
+/**
+ * Make sure to edit your activity`s "configChanges" for rotation changes
+ * by adding this to your activity tag in your app Manifest.xml
+ * android:configChanges="orientation|screenSize"
+ */
 public class VFilePicker
 {
-	public final static int ANY_FILEMANAGER = 50;
-	public final static int IMAGE_FILEMANAGER = 51;
-	public final static int VIDEO_FILEMANAGER = 52;
-	public final static int AUDIO_FILEMANAGER = 53;
+	public static final int IMAGE = 1000;
+	public static final int AUDIO = 2000;
+	public static final int VIDEO = 3000;
+	public static final int ANY = 4000;
 
-	public final static int IMAGE_CAMERA = 11;
-	public final static int VIDEO_CAMERA = 12;
+	public static final int GALLERY = 10000;
+	public static final int CAMERA = 20000;
+	public static final int FILE_MANAGER = 30000;
 
-	public final static int ANY_GALLERY = 20;
-	public final static int IMAGE_GALLERY = 21;
-	public final static int VIDEO_GALLERY = 22;
+	private final static int ANY_FILEMANAGER = 50;
+	private final static int IMAGE_FILEMANAGER = 51;
+	private final static int VIDEO_FILEMANAGER = 52;
+	private final static int AUDIO_FILEMANAGER = 53;
 
-	Activity context;
+	private final static int IMAGE_CAMERA = 11;
+	private final static int VIDEO_CAMERA = 12;
+	private final static int IMAGE_CAMERA_EXTERNAL = 20;
+	private final static int VIDEO_CAMERA_EXTERNAL = 21;
 
-	VFileType fileType;
+	private final static int ANY_GALLERY = 30;
+	private final static int IMAGE_GALLERY = 31;
+	private final static int VIDEO_GALLERY = 32;
 
-	public VFilePicker(Activity context)
+	private int pickerType;
+	private int fromType;
+
+	private String cameraDirectoryName;               // for camera with file only
+	private String filePath;
+
+	private static volatile VFilePicker instance;
+
+	public synchronized static VFilePicker getInstance()
 	{
-		this.context = context;
+		if (instance == null)
+			instance = new VFilePicker();
+
+		return instance;
 	}
 
-	public void PickupMediaFile(final VFileType fileType)
+	private VFilePicker()
 	{
-		if (fileType == VFileType.AUDIO)
-			PickupMediaFile_FileManager(fileType);
-		else
+	}
+
+	//till i create a builder
+	public VFilePicker pick(int pickerType)
+	{
+		this.pickerType = pickerType;
+
+		return instance;
+	}
+
+	public VFilePicker from(int fromType)
+	{
+		this.fromType = fromType;
+
+		return instance;
+	}
+
+	public VFilePicker saveTo(String cameraDirectoryName)
+	{
+		this.cameraDirectoryName = cameraDirectoryName;
+
+		return instance;
+	}
+
+	public void show(Activity context)
+	{
+		if (fromType == GALLERY)
+			FromGallery(context);
+		else if (fromType == CAMERA)
 		{
-			final CharSequence[] items = {"Gallery", "Camera", "Cancel"};
-			AlertDialog.Builder builder = new AlertDialog.Builder(context);
-			builder.setTitle("Select...");
-			builder.setItems(items, new DialogInterface.OnClickListener()
-			{
-				@Override
-				public void onClick(DialogInterface dialog, int item)
-				{
-					if (items[item].equals("Gallery"))
-					{
-						FromGallery(fileType);
-					}
-					else if (items[item].equals("Camera"))
-					{
-						FromCamera(fileType);
-					}
-					else if (items[item].equals("Cancel"))
-					{
-						dialog.dismiss();
-					}
-				}
-			});
-			builder.show();
+			if (cameraDirectoryName == null || cameraDirectoryName.isEmpty())
+				FromCamera(context);
+			else
+				FromCameraWithFile(context);
 		}
+		else
+			FromFileManager(context);
 	}
 
-	public void FromGallery(VFileType fileType)
+	public VFileInfo getFileInfo()
 	{
-		if (fileType == VFileType.AUDIO)
+		if (filePath == null || filePath.isEmpty()) return null;
+
+		return new VFileInfo(filePath);
+	}
+
+	private void FromGallery(Activity context)
+	{
+		if (pickerType == AUDIO)
 			return;
 
 		String setType = "*/*";
 		int requestCode = ANY_GALLERY;
 
-		if (fileType == VFileType.IMAGE)
+		if (pickerType == IMAGE)
 		{
 			setType = "image/*";
 			requestCode = VIDEO_GALLERY;
 		}
-		else if (fileType == VFileType.VIDEO)
+		else if (pickerType == VIDEO)
 		{
 			setType = "video/*";
 			requestCode = IMAGE_GALLERY;
 		}
 
-		this.fileType = fileType;
-
-		if (RequestPermissions(requestCode))
+		if (RequestPermissions(context, requestCode))
 		{
 			Intent intent = new Intent(Intent.ACTION_PICK);
 			intent.setType(setType);
@@ -106,48 +138,68 @@ public class VFilePicker
 		}
 	}
 
-	public void FromCamera(VFileType fileType)
+	private void FromCamera(Activity context)
 	{
-		if (fileType == VFileType.AUDIO || fileType == VFileType.ANY)
-			return;
+		if (pickerType == AUDIO || pickerType == ANY) return;
 
 		String action = MediaStore.ACTION_IMAGE_CAPTURE;
 		int requestCode = IMAGE_CAMERA;
 
-		if (fileType == VFileType.IMAGE)
+		if (pickerType == IMAGE)
 		{
 			action = MediaStore.ACTION_IMAGE_CAPTURE;
 			requestCode = IMAGE_CAMERA;
 		}
-		else if (fileType == VFileType.VIDEO)
+		else if (pickerType == VIDEO)
 		{
 			action = MediaStore.ACTION_VIDEO_CAPTURE;
 			requestCode = VIDEO_CAMERA;
 		}
 
-		this.fileType = fileType;
-
-		if (RequestPermissions(requestCode))
+		if (RequestPermissions(context, requestCode))
 		{
 			Intent intent = new Intent(action);
-//		intent.putExtra(MediaStore.EXTRA_SCREEN_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-//		intent.putExtra(MediaStore.EXTRA_SIZE_LIMIT, 50 * 1048 * 1048);//1*1048*1048=1MB
-//		if (fileType == VFileType.VIDEO)
-//		{
-//			intent.putExtra(MediaStore.EXTRA_SCREEN_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-//			intent.putExtra(MediaStore.EXTRA_VIDEO_QUALITY, 0);
-//			intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 60);
-//		}
 			context.startActivityForResult(intent, requestCode);
 		}
 	}
 
-	public void PickupMediaFile_FileManager(VFileType fileType)
+	private void FromCameraWithFile(Activity context)
+	{
+		if (pickerType == AUDIO || pickerType == ANY) return;
+		if (cameraDirectoryName == null || cameraDirectoryName.isEmpty()) return;
+
+		String action = MediaStore.ACTION_IMAGE_CAPTURE;
+		int requestCode = IMAGE_CAMERA_EXTERNAL;
+
+		if (pickerType == IMAGE)
+		{
+			action = MediaStore.ACTION_IMAGE_CAPTURE;
+			requestCode = IMAGE_CAMERA_EXTERNAL;
+		}
+		else if (pickerType == VIDEO)
+		{
+			action = MediaStore.ACTION_VIDEO_CAPTURE;
+			requestCode = VIDEO_CAMERA_EXTERNAL;
+		}
+
+		if (RequestPermissions(context, requestCode))
+		{
+			filePath = Utils.GenerateFilePath(cameraDirectoryName, pickerType == IMAGE ? 1 : 3);
+
+			if (filePath == null) return;
+
+			Intent intent = new Intent(action);
+			intent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, Uri.fromFile(new File(filePath)));
+			context.startActivityForResult(intent, requestCode);
+		}
+	}
+
+	private void FromFileManager(Activity context)
 	{
 		String setType = "*/*";
 		int requestCode = ANY_FILEMANAGER;
 
-		if (fileType == VFileType.ANY)
+		if (pickerType == ANY)
 		{
 			if (Build.VERSION.SDK_INT >= 19)
 				setType = "*/*";
@@ -156,25 +208,23 @@ public class VFilePicker
 
 			requestCode = ANY_FILEMANAGER;
 		}
-		else if (fileType == VFileType.IMAGE)
+		else if (pickerType == IMAGE)
 		{
 			setType = "image/*";
 			requestCode = IMAGE_FILEMANAGER;
 		}
-		else if (fileType == VFileType.VIDEO)
+		else if (pickerType == VIDEO)
 		{
 			setType = "video/*";
 			requestCode = VIDEO_FILEMANAGER;
 		}
-		else if (fileType == VFileType.AUDIO)
+		else if (pickerType == AUDIO)
 		{
 			setType = "audio/*";
 			requestCode = AUDIO_FILEMANAGER;
 		}
 
-		this.fileType = fileType;
-
-		if (RequestPermissions(requestCode))
+		if (RequestPermissions(context, requestCode))
 		{
 			Intent intent = new Intent();
 			if (Build.VERSION.SDK_INT >= 19)
@@ -195,7 +245,7 @@ public class VFilePicker
 		}
 	}
 
-	boolean RequestPermissions(int requestCode)
+	private boolean RequestPermissions(Activity context, int requestCode)
 	{
 		boolean permissionGranted = true;
 
@@ -220,7 +270,7 @@ public class VFilePicker
 
 			if (!permissionGranted)
 			{
-				if (requestCode == IMAGE_CAMERA || requestCode == VIDEO_CAMERA)
+				if (requestCode == IMAGE_CAMERA || requestCode == IMAGE_CAMERA_EXTERNAL || requestCode == VIDEO_CAMERA || requestCode == VIDEO_CAMERA_EXTERNAL)
 					ActivityCompat.requestPermissions(context, cameraPermissions, requestCode);
 				else
 					ActivityCompat.requestPermissions(context, galleryPermissions, requestCode);
@@ -230,36 +280,33 @@ public class VFilePicker
 		return permissionGranted;
 	}
 
-	public void onVFilePickerRequestPermissions(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
+	public void onRequestPermissions(Activity context, int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
 	{
 		if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
 		{
 			if (requestCode == IMAGE_GALLERY || requestCode == VIDEO_GALLERY || requestCode == ANY_GALLERY)
-				FromGallery(fileType);
+				FromGallery(context);
 			else if (requestCode == IMAGE_CAMERA || requestCode == VIDEO_CAMERA)
-				FromCamera(fileType);
+				FromCamera(context);
+			else if (requestCode == IMAGE_CAMERA_EXTERNAL || requestCode == VIDEO_CAMERA_EXTERNAL)
+				FromCameraWithFile(context);
 			else if (requestCode >= ANY_FILEMANAGER && requestCode <= AUDIO_FILEMANAGER)
-				PickupMediaFile_FileManager(fileType);
+				FromFileManager(context);
 		}
 	}
 
-	/**
-	 * Make sure to edit your activity`s "configChanges" for rotation changes
-	 * by adding this to your activity tag in your app Manifest.xml
-	 * android:configChanges="orientation|screenSize"
-	 */
-	public VFileInfos GetFileInfos(int requestCode, Intent data)
+	public void onActivityResult(Activity context, int requestCode, int resultCode, Intent data)
 	{
-		if (data.getData() == null)
-			return null;
+		if (resultCode == Activity.RESULT_OK)
+		{
+			if (requestCode != IMAGE_CAMERA_EXTERNAL && requestCode != VIDEO_CAMERA_EXTERNAL)
+			{
+				if (data.getData() == null)
+					return;
 
-		Uri selectedFileURI = data.getData();
-		String filePath = VFilePickerUtilities.getFilePathFromURI(context, selectedFileURI);
-
-		if (filePath == null)
-			return null;
-
-		return new VFileInfos(filePath);
+				filePath = Utils.getFilePathFromURI(context, data.getData());
+			}
+		}
 	}
 }
 

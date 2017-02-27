@@ -12,7 +12,9 @@ import android.os.Build;
 import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
+import android.support.annotation.Nullable;
 import android.util.Base64;
+import android.util.Log;
 import android.webkit.MimeTypeMap;
 
 import java.io.ByteArrayOutputStream;
@@ -20,14 +22,16 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * Created by AhmedNTS on 2016-05-31.
  */
 @SuppressWarnings("all")
-public class VFilePickerUtilities
+public class Utils
 {
-	private VFilePickerUtilities()
+	private Utils()
 	{
 	}
 
@@ -85,25 +89,6 @@ public class VFilePickerUtilities
 		return "com.google.android.apps.photos.content".equals(uri.getAuthority());
 	}
 
-	public static String getExtension(String uri)
-	{
-		if (uri == null)
-		{
-			return null;
-		}
-
-		int dot = uri.lastIndexOf(".");
-		if (dot >= 0)
-		{
-			return uri.substring(dot).toLowerCase();
-		}
-		else
-		{
-			// No extension.
-			return "";
-		}
-	}
-
 	public static String getMimeType(File file)
 	{
 		String extension = getExtension(file.getName());
@@ -112,6 +97,52 @@ public class VFilePickerUtilities
 			return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.substring(1));
 
 		return "application/octet-stream";
+	}
+
+	public static String getExtension(String uri)
+	{
+		if (uri == null)
+			return null;
+
+		int dot = uri.lastIndexOf(".");
+		if (dot >= 0)
+			return uri.substring(dot).toLowerCase();
+		else// No extension.
+			return "";
+	}
+
+	@Nullable
+	public static String GenerateFilePath(String appMediaFolderName, int type)
+	{
+		// To be safe, you should check that the SDCard is mounted
+		if (!Environment.getExternalStorageState().equalsIgnoreCase(Environment.MEDIA_MOUNTED))
+			return null;
+
+		if (appMediaFolderName == null || appMediaFolderName.isEmpty()) return null;
+
+		File mediaStorageDir = new File(Environment.getExternalStorageDirectory(), appMediaFolderName);
+
+		if (!mediaStorageDir.exists())
+		{
+			if (!mediaStorageDir.mkdirs())
+			{
+				Log.d("GenerateFilePath", "failed to create directory");
+				return null;
+			}
+		}
+
+		String filePath;
+		String timeStamp = SimpleDateFormat.getDateTimeInstance().format(new Date());
+		if (type == 1)
+			filePath = mediaStorageDir.getPath() + File.separator + "IMG_" + timeStamp + ".jpg";
+		else if (type == 2)
+			filePath = mediaStorageDir.getPath() + File.separator + "AUD_" + timeStamp + ".3gp";
+		else if (type == 3)
+			filePath = mediaStorageDir.getPath() + File.separator + "VID_" + timeStamp + ".mp4";
+		else
+			return null;
+
+		return filePath;
 	}
 
 	/**
@@ -231,83 +262,88 @@ public class VFilePickerUtilities
 		return rotatedImg;
 	}
 
+	@Nullable
 	public static String getFilePathFromURI(Context context, Uri uri)
 	{
-		String filePath = null;
-
-		final boolean needToCheckUri = Build.VERSION.SDK_INT >= 19;
-		String selection = null;
-		String[] selectionArgs = null;
+		final boolean isKitKat = Build.VERSION.SDK_INT >= 19;
 
 		// Uri is different in versions after KITKAT (Android 4.4), we need to
 		// deal with different Uris.
-		if (needToCheckUri && DocumentsContract.isDocumentUri(context, uri))
+		// DocumentProvider
+		if (isKitKat && DocumentsContract.isDocumentUri(context, uri))
 		{
-			if (VFilePickerUtilities.isExternalStorageDocument(uri))
+			if (Utils.isExternalStorageDocument(uri))
 			{
 				final String docId = DocumentsContract.getDocumentId(uri);
 				final String[] split = docId.split(":");
 				final String type = split[0];
 
-				return filePath = Environment.getExternalStorageDirectory() + "/" + split[1];
+				return Environment.getExternalStorageDirectory() + "/" + split[1];
 			}
-			else if (VFilePickerUtilities.isDownloadsDocument(uri))
+			else if (Utils.isDownloadsDocument(uri))
 			{
 				final String id = DocumentsContract.getDocumentId(uri);
-				uri = ContentUris.withAppendedId(Uri.parse("content://downloads/public_downloads"), Long.valueOf(id));
+				final Uri contentUri = ContentUris.withAppendedId(Uri.parse("content://downloads/public_downloads"), Long.valueOf(id));
+
+				return getDataColumn(context, contentUri, null, null);
 			}
-			else if (VFilePickerUtilities.isMediaDocument(uri))
+			else if (Utils.isMediaDocument(uri))
 			{
 				final String docId = DocumentsContract.getDocumentId(uri);
 				final String[] split = docId.split(":");
 				final String type = split[0];
 
+				Uri contentUri = null;
 				if ("image".equals(type))
-				{
-					uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
-				}
+					contentUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
 				else if ("video".equals(type))
-				{
-					uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
-				}
+					contentUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
 				else if ("audio".equals(type))
-				{
-					uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-				}
-				selection = "_id=?";
-				selectionArgs = new String[]{split[1]};
+					contentUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+
+				String selection = "_id=?";
+				String[] selectionArgs = new String[]{split[1]};
+
+				return getDataColumn(context, contentUri, selection, selectionArgs);
 			}
 		}
-		if ("content".equalsIgnoreCase(uri.getScheme()))
+		// MediaStore
+		else if ("content".equalsIgnoreCase(uri.getScheme()))
 		{
-			String[] projection = {MediaStore.MediaColumns.DATA};
+			if (isGooglePhotosUri(uri))
+				return uri.getLastPathSegment();
 
-			Cursor cursor = context.getContentResolver().query(uri, projection, selection, selectionArgs, null);
-			if (cursor != null)
-				try
-				{
-					int fileColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA);
-//					int mimeColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE);
-//					int sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE);
-
-					if (cursor.moveToFirst())
-					{
-						filePath = cursor.getString(fileColumn);
-//						fileMimeType = cursor.getString(mimeColumn);
-//						fileSize = cursor.getString(sizeColumn);
-					}
-					cursor.close();
-				}
-				catch (Exception e)
-				{
-					e.printStackTrace();
-				}
+			return getDataColumn(context, uri, null, null);
 		}
+		// File
 		else if ("file".equalsIgnoreCase(uri.getScheme()))
 		{
-			filePath = uri.getPath();
+			return uri.getPath();
 		}
-		return filePath;
+		return null;
+	}
+
+	@Nullable
+	public static String getDataColumn(Context context, Uri uri, String selection, String[] selectionArgs)
+	{
+		Cursor cursor = null;
+		final String column = MediaStore.MediaColumns.DATA;
+		final String[] projection = {column};
+		try
+		{
+			cursor = context.getContentResolver().query(uri, projection, selection, selectionArgs, null);
+			if (cursor != null && cursor.moveToFirst())
+			{
+				final int column_index = cursor.getColumnIndexOrThrow(column);
+				return cursor.getString(column_index);
+			}
+		}
+		finally
+		{
+			if (cursor != null)
+				cursor.close();
+		}
+		return null;
 	}
 
 	public static Bitmap getBitmap(String imagePath, int imageResolution)
@@ -352,18 +388,7 @@ public class VFilePickerUtilities
 	{
 		if (file == null) return null;
 
-		byte[] byteArray = new byte[(int) file.length()];
-
-		try
-		{
-			FileInputStream stream = new FileInputStream(file);
-			stream.read(byteArray);
-			stream.close();
-		}
-		catch (IOException e)
-		{
-			e.printStackTrace();
-		}
+		byte[] byteArray = getFileByteArray(file);
 
 		return Base64.encodeToString(byteArray, Base64.DEFAULT);
 	}
