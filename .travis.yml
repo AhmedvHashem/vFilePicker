@@ -1,12 +1,11 @@
 language: android
 jdk: oraclejdk8
-sudo: false
+sudo: required
 
 android:
   components:
     # Uncomment the lines below if you want to
     # use the latest revision of Android SDK Tools
-    - tools
     - tools
     - platform-tools
 
@@ -19,12 +18,19 @@ android:
     - extra-android-support
 
 licenses:
-    - 'android-sdk-license-.+'
-    - 'android-sdk-preview-license-.+'
-    - 'intel-android-extra-license.+'
+    - '.+'
+
+email: false
     
 script:
    - ./gradlew build connectedCheck
    
 before_install:
     - chmod +x gradlew
+
+before_cache:
+  - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
+cache:
+  directories:
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
