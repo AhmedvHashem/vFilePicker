@@ -9,16 +9,20 @@ import java.io.File;
  */
 public class VFileInfo
 {
-	public String filePath;
-	private String fileExtension;
+	private String filePath;
 	private long fileSize;
-
 	private int fileType;
+	private String fileExtension;
 
 	public VFileInfo(String filePath)
 	{
 		this.filePath = filePath;
 		this.fileType = getFileType();
+	}
+
+	public String getFilePath()
+	{
+		return filePath;
 	}
 
 	public File getFileObject()
@@ -27,6 +31,11 @@ public class VFileInfo
 			return null;
 
 		return new File(filePath);
+	}
+
+	public long getFileSize()
+	{
+		return getFileObject().length();//(1024*1024)*1 = 1 MB
 	}
 
 	public int getFileType()
@@ -41,18 +50,13 @@ public class VFileInfo
 		{
 			if (typeString.contains("image"))
 				fileType = VFilePicker.IMAGE;
-			else if (typeString.contains("video"))
-				fileType = VFilePicker.VIDEO;
 			else if (typeString.contains("audio"))
 				fileType = VFilePicker.AUDIO;
+			else if (typeString.contains("video"))
+				fileType = VFilePicker.VIDEO;
 		}
 
 		return fileType;
-	}
-
-	public long getFileSize()
-	{
-		return getFileObject().length();//(1024*1024)*1 = 1 MB
 	}
 
 	public String getFileExtension()
@@ -68,6 +72,8 @@ public class VFileInfo
 		MediaMetadataRetriever retriever = new MediaMetadataRetriever();
 		retriever.setDataSource(filePath);
 		String time = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+		if (time == null) return 0;
+
 		long timeInmillisec = Long.parseLong(time);
 		long duration = timeInmillisec / 1000;
 //		long hours = duration / 3600;

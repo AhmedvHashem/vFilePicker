@@ -15,7 +15,6 @@ import java.io.File;
 /**
  * Created by AhmedNTS on 2015-09-07.
  */
-
 /**
  * Make sure to edit your activity`s "configChanges" for rotation changes
  * by adding this to your activity tag in your app Manifest.xml

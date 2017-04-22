@@ -71,8 +71,7 @@ public class MainActivity extends AppCompatActivity
 
 		if (fileInfo != null)
 		{
-			long size = fileInfo.getFileSize();
-			Log.d(TAG, "FileSize=" + size + " MB");
+			Log.d(TAG, "FileSize=" + fileInfo.getFileSize() + " Byte");
 
 			Log.d(TAG, "FileType=" + fileInfo.getFileType());
 
