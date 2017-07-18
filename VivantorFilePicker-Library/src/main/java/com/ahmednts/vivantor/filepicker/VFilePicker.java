@@ -204,9 +204,21 @@ public class VFilePicker
 
 			if (filePath == null) return;
 
+			//Intent intent = new Intent(action);
+			//intent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, Uri.fromFile(new File(filePath)));
+			//context.startActivityForResult(intent, requestCode);
 			Intent intent = new Intent(action);
-			intent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, Uri.fromFile(new File(filePath)));
-			context.startActivityForResult(intent, requestCode);
+			Uri photoURI;
+			if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP)
+				photoURI = FileProvider.getUriForFile(context, context.getApplicationContext().getPackageName() + ".fileprovider", new File(filePath));
+			else
+				photoURI = Uri.fromFile(new File(filePath));
+
+			intent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, photoURI);
+			intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+			if (intent.resolveActivity(context.getPackageManager()) != null)
+				context.startActivityForResult(intent, requestCode);
+			
 		}
 	}
 
