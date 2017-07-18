@@ -20,6 +20,23 @@ import java.io.File;
  * by adding this to your activity tag in your app Manifest.xml
  * android:configChanges="orientation|screenSize"
  */
+/*
+AndroidManifest.xml
+<provider
+    android:name="android.support.v4.content.FileProvider"
+    android:authorities="${applicationId}.fileprovider"
+    android:exported="false"
+    android:grantUriPermissions="true">
+    <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/file_paths" />
+</provider>
+
+file_paths.xml
+<paths>
+    <external-path name="external_files" path="." />
+</paths>
+ */
 public class VFilePicker
 {
 	public static final int IMAGE = 1000;
