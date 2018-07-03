@@ -32,24 +32,21 @@ public class MainActivity
     final CharSequence[] items = { "Gallery", "Camera", "Cancel" };
     AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
     builder.setTitle("Select...");
-    builder.setItems(items, new DialogInterface.OnClickListener() {
-      @Override
-      public void onClick(DialogInterface dialog, int item) {
-        if (items[item].equals("Gallery")) {
-          VFilePicker.getInstance()
-              .pick(VFilePicker.IMAGE)
-              .from(VFilePicker.GALLERY)
-              .saveTo("vFilePicker")
-              .show(MainActivity.this);
-        } else if (items[item].equals("Camera")) {
-          VFilePicker.getInstance()
-              .pick(VFilePicker.IMAGE)
-              .from(VFilePicker.CAMERA)
-              .saveTo("vFilePicker")
-              .show(MainActivity.this);
-        } else if (items[item].equals("Cancel")) {
-          dialog.dismiss();
-        }
+    builder.setItems(items, (dialog, item) -> {
+      if (items[item].equals("Gallery")) {
+        VFilePicker.getInstance()
+            .pick(VFilePicker.IMAGE)
+            .from(VFilePicker.GALLERY)
+            .saveTo("vFilePicker")
+            .show(MainActivity.this);
+      } else if (items[item].equals("Camera")) {
+        VFilePicker.getInstance()
+            .pick(VFilePicker.IMAGE)
+            .from(VFilePicker.CAMERA)
+            .saveTo("vFilePicker")
+            .show(MainActivity.this);
+      } else if (items[item].equals("Cancel")) {
+        dialog.dismiss();
       }
     });
     builder.show();
