@@ -76,7 +76,7 @@ public class VFilePicker {
     return instance;
   }
 
-  public void destroyInstance() {
+  public static void destroyInstance() {
     instance = null;
   }
 
@@ -257,7 +257,10 @@ public class VFilePicker {
     };
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-      if (requestCode == IMAGE_CAMERA || requestCode == VIDEO_CAMERA) {
+      if (requestCode == IMAGE_CAMERA
+          || requestCode == VIDEO_CAMERA
+          || requestCode == IMAGE_CAMERA_EXTERNAL
+          || requestCode == VIDEO_CAMERA_EXTERNAL) {
         permissionGranted = ActivityCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
             == PackageManager.PERMISSION_GRANTED
             && ActivityCompat.checkSelfPermission(context,
