@@ -188,15 +188,15 @@ public class VFilePicker {
       //intent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, Uri.fromFile(new File(filePath)));
       //context.startActivityForResult(intent, requestCode);
       Intent intent = new Intent(action);
-      Uri photoURI;
+      Uri fileURI;
       if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
-        photoURI = FileProvider.getUriForFile(context,
+        fileURI = FileProvider.getUriForFile(context,
             context.getApplicationContext().getPackageName() + ".fileprovider", new File(filePath));
       } else {
-        photoURI = Uri.fromFile(new File(filePath));
+        fileURI = Uri.fromFile(new File(filePath));
       }
 
-      intent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, photoURI);
+      intent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, fileURI);
       intent.addFlags(
           Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
       if (intent.resolveActivity(context.getPackageManager()) != null) {
@@ -286,7 +286,9 @@ public class VFilePicker {
     return permissionGranted;
   }
 
-  public void onRequestPermissions(Activity context, int requestCode, @NonNull String[] permissions,
+  public void onRequestPermissions(Activity context,
+      int requestCode,
+      @NonNull String[] permissions,
       @NonNull int[] grantResults) {
     if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
       if (requestCode == IMAGE_GALLERY
