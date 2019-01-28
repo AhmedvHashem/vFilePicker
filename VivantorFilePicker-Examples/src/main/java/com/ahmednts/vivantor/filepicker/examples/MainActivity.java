@@ -1,7 +1,6 @@
 package com.ahmednts.vivantor.filepicker.examples;
 
 import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -25,7 +24,7 @@ public class MainActivity
   @Override
   protected void onDestroy() {
     super.onDestroy();
-    VFilePicker.getInstance().destroyInstance();
+    VFilePicker.destroyInstance();
   }
 
   void PickupMediaFile() {
@@ -73,7 +72,7 @@ public class MainActivity
 
       Log.d(TAG, "FileType=" + fileInfo.getFileType());
 
-      Log.d(TAG, "FileDuration=" + fileInfo.getFileDuration() + " sec");
+      //Log.d(TAG, "FileDuration=" + fileInfo.getFileDuration() + " sec");
     }
   }
 }
