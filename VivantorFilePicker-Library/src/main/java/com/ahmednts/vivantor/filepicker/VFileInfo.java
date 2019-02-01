@@ -10,7 +10,6 @@ public class VFileInfo {
   private File fileObject;
 
   private String filePath;
-  private long fileSize;
   private int fileType;
   private String fileExtension;
 
