@@ -28,8 +28,8 @@ import java.util.Date;
  * Created by AhmedNTS on 2016-05-31.
  */
 @SuppressWarnings("all")
-public class Utils {
-  private Utils() {
+public class VFileUtils {
+  private VFileUtils() {
   }
 
   public static final String MIME_TYPE_TEXT = "text/*";
@@ -259,20 +259,20 @@ public class Utils {
     // deal with different Uris.
     // DocumentProvider
     if (isKitKat && DocumentsContract.isDocumentUri(context, uri)) {
-      if (Utils.isExternalStorageDocument(uri)) {
+      if (VFileUtils.isExternalStorageDocument(uri)) {
         final String docId = DocumentsContract.getDocumentId(uri);
         final String[] split = docId.split(":");
         final String type = split[0];
 
         return Environment.getExternalStorageDirectory() + "/" + split[1];
-      } else if (Utils.isDownloadsDocument(uri)) {
+      } else if (VFileUtils.isDownloadsDocument(uri)) {
         final String id = DocumentsContract.getDocumentId(uri);
         final Uri contentUri =
             ContentUris.withAppendedId(Uri.parse("content://downloads/public_downloads"),
                 Long.valueOf(id));
 
         return getDataColumn(context, contentUri, null, null);
-      } else if (Utils.isMediaDocument(uri)) {
+      } else if (VFileUtils.isMediaDocument(uri)) {
         final String docId = DocumentsContract.getDocumentId(uri);
         final String[] split = docId.split(":");
         final String type = split[0];

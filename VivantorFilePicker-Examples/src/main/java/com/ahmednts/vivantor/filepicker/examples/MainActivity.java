@@ -13,6 +13,8 @@ public class MainActivity
     extends AppCompatActivity {
   private static final String TAG = MainActivity.class.getSimpleName();
 
+  private VFilePicker filePicker;
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -21,29 +23,23 @@ public class MainActivity
     PickupMediaFile();
   }
 
-  @Override
-  protected void onDestroy() {
-    super.onDestroy();
-    VFilePicker.destroyInstance();
-  }
-
   void PickupMediaFile() {
     final CharSequence[] items = { "Gallery", "Camera", "Cancel" };
     AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
     builder.setTitle("Select...");
     builder.setItems(items, (dialog, item) -> {
       if (items[item].equals("Gallery")) {
-        VFilePicker.getInstance()
+        filePicker = new VFilePicker()
             .pick(VFilePicker.IMAGE)
             .from(VFilePicker.GALLERY)
-            .saveTo("vFilePicker")
-            .show(MainActivity.this);
+            .saveTo("vFilePicker");
+        filePicker.show(MainActivity.this);
       } else if (items[item].equals("Camera")) {
-        VFilePicker.getInstance()
+        filePicker = new VFilePicker()
             .pick(VFilePicker.IMAGE)
             .from(VFilePicker.CAMERA)
-            .saveTo("vFilePicker")
-            .show(MainActivity.this);
+            .saveTo("vFilePicker");
+        filePicker.show(MainActivity.this);
       } else if (items[item].equals("Cancel")) {
         dialog.dismiss();
       }
@@ -56,16 +52,14 @@ public class MainActivity
       @NonNull int[] grantResults) {
     super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-    VFilePicker.getInstance().onRequestPermissions(this, requestCode, permissions, grantResults);
+    filePicker.onRequestPermissions(this, requestCode, permissions, grantResults);
   }
 
   @Override
   protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     super.onActivityResult(requestCode, resultCode, data);
 
-    VFilePicker.getInstance().onActivityResult(this, requestCode, resultCode, data);
-
-    VFileInfo fileInfo = VFilePicker.getInstance().getFileInfo();
+    VFileInfo fileInfo = filePicker.onActivityResult(this, requestCode, resultCode, data);
 
     if (fileInfo != null) {
       Log.d(TAG, "FileSize=" + fileInfo.getFileSize() + " Byte");

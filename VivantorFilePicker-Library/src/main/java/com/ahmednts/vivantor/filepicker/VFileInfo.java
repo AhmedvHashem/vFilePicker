@@ -23,7 +23,7 @@ public class VFileInfo {
   }
 
   public File getFileObject() {
-    if (!Utils.isLocal(filePath)) {
+    if (!VFileUtils.isLocal(filePath)) {
       return null;
     }
 
@@ -44,7 +44,7 @@ public class VFileInfo {
       throw new NullPointerException("getFileObject() returned null!");
     }
 
-    String typeString = Utils.getMimeType(file);
+    String typeString = VFileUtils.getMimeType(file);
 
     if (typeString != null) {
       if (typeString.contains("image")) {
@@ -61,7 +61,7 @@ public class VFileInfo {
 
   public String getFileExtension() {
     if (fileExtension == null) {
-      fileExtension = Utils.getExtension(filePath);
+      fileExtension = VFileUtils.getExtension(filePath);
     }
 
     return fileExtension;
@@ -85,18 +85,18 @@ public class VFileInfo {
   }
 
   public String getFileBase64String() {
-    if (!Utils.isLocal(filePath)) {
+    if (!VFileUtils.isLocal(filePath)) {
       return null;
     }
 
     try {
       if (fileType == VFilePicker.IMAGE) {
-        //			    return Utils.getBitmapBase64String(Utils.getBitmap(filePath, 512));
+        //			    return VFileUtils.getBitmapBase64String(VFileUtils.getBitmap(filePath, 512));
 
-        return Utils.getBitmapBase64String(
-            Utils.rotateImageIfRequired(Utils.getBitmap(filePath, 1024), filePath));
+        return VFileUtils.getBitmapBase64String(
+            VFileUtils.rotateImageIfRequired(VFileUtils.getBitmap(filePath, 1024), filePath));
       } else {
-        return Utils.getFileBase64String(getFileObject());
+        return VFileUtils.getFileBase64String(getFileObject());
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -106,18 +106,18 @@ public class VFileInfo {
   }
 
   public byte[] getFileByteArray() {
-    if (!Utils.isLocal(filePath)) {
+    if (!VFileUtils.isLocal(filePath)) {
       return null;
     }
 
     try {
       if (fileType == VFilePicker.IMAGE) {
-        //			    return Utils.getBitmapByteArray(Utils.getBitmap(filePath, 512));
+        //			    return VFileUtils.getBitmapByteArray(VFileUtils.getBitmap(filePath, 512));
 
-        return Utils.getBitmapByteArray(
-            Utils.rotateImageIfRequired(Utils.getBitmap(filePath, 1024), filePath));
+        return VFileUtils.getBitmapByteArray(
+            VFileUtils.rotateImageIfRequired(VFileUtils.getBitmap(filePath, 1024), filePath));
       } else {
-        return Utils.getFileByteArray(getFileObject());
+        return VFileUtils.getFileByteArray(getFileObject());
       }
     } catch (Exception e) {
       e.printStackTrace();

@@ -68,61 +68,39 @@ public class VFilePicker {
   private String cameraDirectoryName;               // for camera with file only
   private String filePath;
 
-  private static volatile VFilePicker instance;
-
-  public synchronized static VFilePicker getInstance() {
-    if (instance == null) instance = new VFilePicker();
-
-    return instance;
-  }
-
-  public static void destroyInstance() {
-    instance = null;
-  }
-
-  private VFilePicker() {
-  }
-
-  //till i create a builder
   public VFilePicker pick(int pickerType) {
     this.pickerType = pickerType;
 
-    return instance;
+    return this;
   }
 
   public VFilePicker from(int fromType) {
     this.fromType = fromType;
 
-    return instance;
+    return this;
   }
 
   public VFilePicker saveTo(String cameraDirectoryName) {
     this.cameraDirectoryName = cameraDirectoryName;
 
-    return instance;
+    return this;
   }
 
   public void show(Activity context) {
     if (fromType == GALLERY) {
-      FromGallery(context);
+      fromGallery(context);
     } else if (fromType == CAMERA) {
       if (cameraDirectoryName == null || cameraDirectoryName.isEmpty()) {
-        FromCamera(context);
+        fromCamera(context);
       } else {
-        FromCameraWithFile(context);
+        fromCameraWithFile(context);
       }
     } else {
-      FromFileManager(context);
+      fromFileManager(context);
     }
   }
 
-  public VFileInfo getFileInfo() {
-    if (filePath == null || filePath.isEmpty()) return null;
-
-    return new VFileInfo(filePath);
-  }
-
-  private void FromGallery(Activity context) {
+  private void fromGallery(Activity context) {
     if (pickerType == AUDIO) return;
 
     String setType = "*/*";
@@ -136,7 +114,7 @@ public class VFilePicker {
       requestCode = IMAGE_GALLERY;
     }
 
-    if (RequestPermissions(context, requestCode)) {
+    if (requestPermissions(context, requestCode)) {
       Intent intent = new Intent(Intent.ACTION_PICK);
       intent.setType(setType);
       intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
@@ -144,7 +122,7 @@ public class VFilePicker {
     }
   }
 
-  private void FromCamera(Activity context) {
+  private void fromCamera(Activity context) {
     if (pickerType == AUDIO || pickerType == ANY) return;
 
     String action = MediaStore.ACTION_IMAGE_CAPTURE;
@@ -158,13 +136,13 @@ public class VFilePicker {
       requestCode = VIDEO_CAMERA;
     }
 
-    if (RequestPermissions(context, requestCode)) {
+    if (requestPermissions(context, requestCode)) {
       Intent intent = new Intent(action);
       context.startActivityForResult(intent, requestCode);
     }
   }
 
-  private void FromCameraWithFile(Activity context) {
+  private void fromCameraWithFile(Activity context) {
     if (pickerType == AUDIO || pickerType == ANY) return;
     if (cameraDirectoryName == null || cameraDirectoryName.isEmpty()) return;
 
@@ -179,8 +157,8 @@ public class VFilePicker {
       requestCode = VIDEO_CAMERA_EXTERNAL;
     }
 
-    if (RequestPermissions(context, requestCode)) {
-      filePath = Utils.GenerateFilePath(cameraDirectoryName, pickerType == IMAGE ? 1 : 3);
+    if (requestPermissions(context, requestCode)) {
+      filePath = VFileUtils.GenerateFilePath(cameraDirectoryName, pickerType == IMAGE ? 1 : 3);
 
       if (filePath == null) return;
 
@@ -191,7 +169,8 @@ public class VFilePicker {
       Uri fileURI;
       if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
         fileURI = FileProvider.getUriForFile(context,
-            context.getApplicationContext().getPackageName() + ".fileprovider", new File(filePath));
+            context.getApplicationContext().getPackageName() + ".fileprovider",
+            new File(filePath));
       } else {
         fileURI = Uri.fromFile(new File(filePath));
       }
@@ -205,7 +184,7 @@ public class VFilePicker {
     }
   }
 
-  private void FromFileManager(Activity context) {
+  private void fromFileManager(Activity context) {
     String setType = "*/*";
     int requestCode = ANY_FILEMANAGER;
 
@@ -228,7 +207,7 @@ public class VFilePicker {
       requestCode = AUDIO_FILEMANAGER;
     }
 
-    if (RequestPermissions(context, requestCode)) {
+    if (requestPermissions(context, requestCode)) {
       Intent intent = new Intent();
       if (Build.VERSION.SDK_INT >= 19) {
         // For Android KitKat, we use a different intent to ensure
@@ -245,7 +224,7 @@ public class VFilePicker {
     }
   }
 
-  private boolean RequestPermissions(Activity context, int requestCode) {
+  private boolean requestPermissions(Activity context, int requestCode) {
     boolean permissionGranted = true;
 
     String[] cameraPermissions = new String[] {
@@ -294,24 +273,29 @@ public class VFilePicker {
       if (requestCode == IMAGE_GALLERY
           || requestCode == VIDEO_GALLERY
           || requestCode == ANY_GALLERY) {
-        FromGallery(context);
+        fromGallery(context);
       } else if (requestCode == IMAGE_CAMERA || requestCode == VIDEO_CAMERA) {
-        FromCamera(context);
+        fromCamera(context);
       } else if (requestCode == IMAGE_CAMERA_EXTERNAL || requestCode == VIDEO_CAMERA_EXTERNAL) {
-        FromCameraWithFile(context);
+        fromCameraWithFile(context);
       } else if (requestCode >= ANY_FILEMANAGER && requestCode <= AUDIO_FILEMANAGER) {
-        FromFileManager(context);
+        fromFileManager(context);
       }
     }
   }
 
-  public void onActivityResult(Activity context, int requestCode, int resultCode, Intent data) {
+  public VFileInfo onActivityResult(Activity context, int requestCode, int resultCode, Intent data) {
     if (resultCode == Activity.RESULT_OK) {
       if (requestCode != IMAGE_CAMERA_EXTERNAL && requestCode != VIDEO_CAMERA_EXTERNAL) {
-        if (data.getData() == null) return;
+        if (data.getData() == null) return null;
 
-        filePath = Utils.getFilePathFromURI(context, data.getData());
+        filePath = VFileUtils.getFilePathFromURI(context, data.getData());
       }
+
+      if (filePath == null || filePath.isEmpty()) return null;
+      return new VFileInfo(filePath);
+    } else {
+      return null;
     }
   }
 }
