@@ -12,17 +12,23 @@ import android.os.Build;
 import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
+import android.provider.OpenableColumns;
 import android.support.annotation.Nullable;
+import android.support.v4.content.FileProvider;
 import android.util.Base64;
 import android.util.Log;
 import android.webkit.MimeTypeMap;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.Calendar;
+import java.util.Locale;
 
 /**
  * Created by AhmedNTS on 2016-05-31.
@@ -91,21 +97,17 @@ public class VFileUtils {
   }
 
   public static String getExtension(String uri) {
-    if (uri == null) {
-      return null;
+    if (uri != null) {
+      int dot = uri.lastIndexOf(".");
+      if (dot >= 0) {
+        return uri.substring(dot).toLowerCase();
+      }
     }
-
-    int dot = uri.lastIndexOf(".");
-    if (dot >= 0) {
-      return uri.substring(dot).toLowerCase();
-    } else// No extension.
-    {
-      return "";
-    }
+    return "";
   }
 
   @Nullable
-  public static String GenerateFilePath(String appMediaFolderName, int type) {
+  public static String generateFilePath(String appMediaFolderName, int type) {
     // To be safe, you should check that the SDCard is mounted
     if (!Environment.getExternalStorageState().equalsIgnoreCase(Environment.MEDIA_MOUNTED)) {
       return null;
@@ -113,23 +115,34 @@ public class VFileUtils {
 
     if (appMediaFolderName == null || appMediaFolderName.isEmpty()) return null;
 
-    File mediaStorageDir = new File(Environment.getExternalStorageDirectory(), appMediaFolderName);
+    File root = Environment.getExternalStorageDirectory();
+    File appFolder = new File(root, appMediaFolderName);
+    File childFolder;
+    if (type == 1) {
+      childFolder = new File(appFolder, "Images");
+    } else if (type == 2) {
+      childFolder = new File(appFolder, "Audios");
+    } else if (type == 3) {
+      childFolder = new File(appFolder, "Videos");
+    } else {
+      childFolder = appFolder;
+    }
 
-    if (!mediaStorageDir.exists()) {
-      if (!mediaStorageDir.mkdirs()) {
+    if (!childFolder.exists()) {
+      if (!childFolder.mkdirs()) {
         Log.d("GenerateFilePath", "failed to create directory");
         return null;
       }
     }
 
     String filePath;
-    String timeStamp = SimpleDateFormat.getDateTimeInstance().format(new Date());
+    String timeStamp = getCurrentDateTime();
     if (type == 1) {
-      filePath = mediaStorageDir.getPath() + File.separator + "IMG_" + timeStamp + ".jpg";
+      filePath = childFolder.getPath() + File.separator + "IMG_" + timeStamp + ".jpg";
     } else if (type == 2) {
-      filePath = mediaStorageDir.getPath() + File.separator + "AUD_" + timeStamp + ".3gp";
+      filePath = childFolder.getPath() + File.separator + "AUD_" + timeStamp + ".mp3";
     } else if (type == 3) {
-      filePath = mediaStorageDir.getPath() + File.separator + "VID_" + timeStamp + ".mp4";
+      filePath = childFolder.getPath() + File.separator + "VID_" + timeStamp + ".mp4";
     } else {
       return null;
     }
@@ -165,8 +178,12 @@ public class VFileUtils {
     options.inJustDecodeBounds = false;
     imageStream = context.getContentResolver().openInputStream(selectedImage);
     Bitmap img = BitmapFactory.decodeStream(imageStream, null, options);
+    imageStream.close();
 
-    img = rotateImageIfRequired(img, selectedImage.getPath());
+    String imagePath = getFilePathFromURI(context, selectedImage);
+    if (imagePath != null) {
+      img = rotateImageIfRequired(img, imagePath);
+    }
     return img;
   }
 
@@ -198,7 +215,9 @@ public class VFileUtils {
 
       // Choose the smallest ratio as inSampleSize value, this will guarantee a final image
       // with both dimensions larger than or equal to the requested height and width.
-      inSampleSize = heightRatio < widthRatio ? heightRatio : widthRatio;
+      inSampleSize = heightRatio < widthRatio
+          ? heightRatio
+          : widthRatio;
 
       // This offers some additional logic in case the image has a strange
       // aspect ratio. For example, a panorama may have a much larger
@@ -267,11 +286,28 @@ public class VFileUtils {
         return Environment.getExternalStorageDirectory() + "/" + split[1];
       } else if (VFileUtils.isDownloadsDocument(uri)) {
         final String id = DocumentsContract.getDocumentId(uri);
-        final Uri contentUri =
-            ContentUris.withAppendedId(Uri.parse("content://downloads/public_downloads"),
-                Long.valueOf(id));
 
-        return getDataColumn(context, contentUri, null, null);
+        if (id != null && id.startsWith("raw:")) {
+          return id.substring(4);
+        }
+
+        String[] contentUriPrefixesToTry = new String[] {
+            "content://downloads/public_downloads", "content://downloads/my_downloads",
+            "content://downloads/all_downloads"
+        };
+        for (String contentUriPrefix : contentUriPrefixesToTry) {
+          Uri contentUri =
+              ContentUris.withAppendedId(Uri.parse(contentUriPrefix), Long.valueOf(id));
+          try {
+            String path = getDataColumn(context, contentUri, null, null);
+            if (path != null) {
+              return path;
+            }
+          } catch (Exception e) {
+            String path = copyToFileAndReturnPath(context, uri);
+            return path;
+          }
+        }
       } else if (VFileUtils.isMediaDocument(uri)) {
         final String docId = DocumentsContract.getDocumentId(uri);
         final String[] split = docId.split(":");
@@ -289,7 +325,11 @@ public class VFileUtils {
         String selection = "_id=?";
         String[] selectionArgs = new String[] { split[1] };
 
-        return getDataColumn(context, contentUri, selection, selectionArgs);
+        try {
+          return getDataColumn(context, contentUri, selection, selectionArgs);
+        } catch (Exception e) {
+          return null;
+        }
       }
     }
     // MediaStore
@@ -298,7 +338,15 @@ public class VFileUtils {
         return uri.getLastPathSegment();
       }
 
-      return getDataColumn(context, uri, null, null);
+      try {
+        String path = getDataColumn(context, uri, null, null);
+        if (path != null) {
+          return path;
+        }
+      } catch (Exception e) {
+        String path = copyToFileAndReturnPath(context, uri);
+        return path;
+      }
     }
     // File
     else if ("file".equalsIgnoreCase(uri.getScheme())) {
@@ -309,7 +357,7 @@ public class VFileUtils {
 
   @Nullable
   public static String getDataColumn(Context context, Uri uri, String selection,
-      String[] selectionArgs) {
+      String[] selectionArgs) throws Exception {
     Cursor cursor = null;
     final String column = MediaStore.MediaColumns.DATA;
     final String[] projection = { column };
@@ -385,5 +433,129 @@ public class VFileUtils {
     }
 
     return byteArray;
+  }
+
+  private static String copyToFileAndReturnPath(Context context, Uri uri) {
+    // path could not be retrieved using ContentResolver, therefore copy file to accessible cache using streams
+    String fileName = getFileName(context, uri);
+    File file = new File(context.getCacheDir(), fileName);
+    String destinationPath = file.getAbsolutePath();
+    saveFileFromUri(context, uri, destinationPath);
+    return destinationPath;
+  }
+
+  private static void saveFileFromUri(Context context, Uri uri, String destinationPath) {
+    InputStream is = null;
+    BufferedOutputStream bos = null;
+    try {
+      is = context.getContentResolver().openInputStream(uri);
+      bos = new BufferedOutputStream(new FileOutputStream(destinationPath, false));
+      byte[] buf = new byte[1024];
+      is.read(buf);
+      do {
+        bos.write(buf);
+      } while (is.read(buf) != -1);
+    } catch (IOException e) {
+      e.printStackTrace();
+    } finally {
+      try {
+        if (is != null) is.close();
+        if (bos != null) bos.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
+  @Nullable
+  public static File generateFileWithName(File directory, @Nullable String name) {
+    if (name == null) {
+      return null;
+    }
+
+    File file = new File(directory, name);
+
+    if (file.exists()) {
+      String fileName = name;
+      String extension = "";
+      int dotIndex = name.lastIndexOf('.');
+      if (dotIndex > 0) {
+        fileName = name.substring(0, dotIndex);
+        extension = name.substring(dotIndex);
+      }
+
+      int index = 0;
+
+      while (file.exists()) {
+        index++;
+        name = fileName + '(' + index + ')' + extension;
+        file = new File(directory, name);
+      }
+    }
+
+    try {
+      if (!file.createNewFile()) {
+        return null;
+      }
+    } catch (IOException e) {
+      return null;
+    }
+
+    return file;
+  }
+
+  public static String getFileName(Context context, Uri uri) {
+    String mimeType = context.getContentResolver().getType(uri);
+    String filename = null;
+
+    if (mimeType == null) {
+      String path = getFilePathFromURI(context, uri);
+      if (path == null) {
+        filename = getFileName(uri.toString());
+      } else {
+        File file = new File(path);
+        filename = file.getName();
+      }
+    } else {
+      Cursor returnCursor = context.getContentResolver().query(uri, null, null, null, null);
+      if (returnCursor != null) {
+        int nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+        returnCursor.moveToFirst();
+        filename = returnCursor.getString(nameIndex);
+        returnCursor.close();
+      }
+    }
+
+    return filename;
+  }
+
+  public static String getFileName(String filePath) {
+    if (filePath == null) {
+      return null;
+    }
+    int index = filePath.lastIndexOf('/');
+    return filePath.substring(index + 1);
+  }
+
+  public static String getCurrentDateTime() {
+    DateFormat dfDate = new SimpleDateFormat("yyyyMMdd", Locale.ENGLISH);
+    String date = dfDate.format(Calendar.getInstance().getTime());
+
+    DateFormat dfTime = new SimpleDateFormat("HHmmss", Locale.ENGLISH);
+    String time = dfTime.format(Calendar.getInstance().getTime());
+
+    return date + time;
+  }
+
+  public static Uri getUriForFile(Context context, File file) {
+    Uri fileURI;
+    if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
+      fileURI = FileProvider.getUriForFile(context,
+          context.getApplicationContext().getPackageName() + ".fileprovider",
+          file);
+    } else {
+      fileURI = Uri.fromFile(file);
+    }
+    return fileURI;
   }
 }

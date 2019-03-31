@@ -9,7 +9,6 @@ import android.os.Build;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.FileProvider;
 import java.io.File;
 
 /**
@@ -158,24 +157,14 @@ public class VFilePicker {
     }
 
     if (requestPermissions(context, requestCode)) {
-      filePath = VFileUtils.GenerateFilePath(cameraDirectoryName, pickerType == IMAGE ? 1 : 3);
+      filePath = VFileUtils.generateFilePath(cameraDirectoryName, pickerType == IMAGE ? 1 : 3);
 
       if (filePath == null) return;
 
-      //Intent intent = new Intent(action);
-      //intent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, Uri.fromFile(new File(filePath)));
-      //context.startActivityForResult(intent, requestCode);
-      Intent intent = new Intent(action);
-      Uri fileURI;
-      if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
-        fileURI = FileProvider.getUriForFile(context,
-            context.getApplicationContext().getPackageName() + ".fileprovider",
-            new File(filePath));
-      } else {
-        fileURI = Uri.fromFile(new File(filePath));
-      }
+      Uri fileURI = VFileUtils.getUriForFile(context, new File(filePath));
 
-      intent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, fileURI);
+      Intent intent = new Intent(action);
+      intent.putExtra(MediaStore.EXTRA_OUTPUT, fileURI);
       intent.addFlags(
           Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
       if (intent.resolveActivity(context.getPackageManager()) != null) {
@@ -284,7 +273,8 @@ public class VFilePicker {
     }
   }
 
-  public VFileInfo onActivityResult(Activity context, int requestCode, int resultCode, Intent data) {
+  public VFileInfo onActivityResult(Activity context, int requestCode, int resultCode,
+      Intent data) {
     if (resultCode == Activity.RESULT_OK) {
       if (requestCode != IMAGE_CAMERA_EXTERNAL && requestCode != VIDEO_CAMERA_EXTERNAL) {
         if (data.getData() == null) return null;
@@ -299,5 +289,3 @@ public class VFilePicker {
     }
   }
 }
-
-
